@@ -73,7 +73,7 @@ server db = serveDirectoryFileServer "./static"
     mine = liftIO $ do
                  bc <- readTVarIO db
                  let block = BC.lastBlock bc
-                 let newProof = fst $ BC.proofOfWork $ BC.proof block
+                 let newProof = BC.proofOfWork (BC.blockToHash block) (BC.proof block)
                  let hash = BC.blockToHash block
                  let fee = Transaction
                               { sender    = "fee"

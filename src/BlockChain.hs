@@ -86,28 +86,17 @@ blockToHash = hash . show
 hash :: String -> Hash
 hash = B.unpack . B16.encode . S.hash . B.pack
 
-proofOfWork :: Proof -> (Proof, Hash)
-proofOfWork preProof = core preProof
+proofOfWork :: Hash -> Proof -> Proof
+proofOfWork preHash preProof = core 1
   where
-    core :: Integer -> (Proof, Hash)
+    core :: Integer -> Proof
     core val =
-        let p = preProof * val
-        in  if valid p then (p, hash $ show p) else core (val + 1)
+        let p = preHash ++ show (preProof * val)
+        in  if valid p then val else core (val + 1)
 
-    valid :: Proof -> Bool
+    valid :: String -> Bool
     valid p =
-        let s = hash $ show p
+        let s = hash p
         in  length s
                 >= 4
-                && s
-                !! 0
-                == '0'
-                && s
-                !! 1
-                == '0'
-                && s
-                !! 2
-                == '0'
-                && s
-                !! 3
-                == '0'
+                && take 4 s == "0000"
