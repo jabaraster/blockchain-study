@@ -19,6 +19,9 @@ library
   build-depends:       base >= 4.7 && < 5
                      , time
                      , aeson
+                     , bytestring
+                     , cryptohash
+                     , base16-bytestring
   default-language:    Haskell2010
 
 executable blockchain-study-exe
@@ -31,6 +34,7 @@ executable blockchain-study-exe
                      , servant-server
                      , wai
                      , warp
+                     , stm
   default-language:    Haskell2010
 
 test-suite blockchain-study-test

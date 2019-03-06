@@ -1,35 +1,44 @@
-module BlockChain
-    ( Transaction(..)
-    , Block
-    , BlockChain
-    )
-where
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+module BlockChain where
 
+import qualified Crypto.Hash.SHA256            as S
+import           Data.Aeson
+import qualified Data.ByteString               as BB
+                                                ( ByteString )
+import qualified Data.ByteString.Base16        as B16
+                                                ( encode )
+import qualified Data.ByteString.Char8         as B
+                                                ( index
+                                                , length
+                                                , pack
+                                                , unpack
+                                                )
 import           Data.Time.Clock
-import           Data.Time.Calendar
+import           GHC.Generics
 
 type Index = Integer
 type Proof = Integer
 type Hash = String
 
 data Transaction = Transaction
-    { sender :: String
+    { sender    :: String
     , recipient :: String
-    , amount :: Integer
-    } deriving (Show)
+    , amount    :: Integer
+    } deriving (Generic, Show, FromJSON, ToJSON)
 
 data Block = Block
-    { index :: Index
-    , timestamp :: UTCTime
-    , proof :: Proof
+    { index        :: Index
+    , timestamp    :: UTCTime
+    , proof        :: Proof
     , previousHash :: Hash
     , transactions :: [Transaction]
-    } deriving (Show)
+    } deriving (Generic, Show, ToJSON)
 
 data BlockChain = BlockChain
-    { chain :: [Block]
+    { chain               :: [Block]
     , currentTransactions :: [Transaction]
-    }
+    } deriving (Generic)
 
 genesisBlock :: UTCTime -> Block
 genesisBlock t = Block { index        = 0
@@ -44,14 +53,61 @@ def = getCurrentTime >>= \t ->
     pure BlockChain { chain = [genesisBlock t], currentTransactions = [] }
 
 newTransaction :: Transaction -> BlockChain -> BlockChain
-newTransaction t bc = bc { currentTransactions = currentTransactions bc ++ [t] }
+newTransaction t bc =
+    bc { currentTransactions = currentTransactions bc ++ [t] }
 
-newBlock :: Proof -> Hash -> BlockChain -> IO BlockChain
-newBlock p h bc = getCurrentTime >>= \t ->
-    let b = Block { index        = ((+) 1) $ fromIntegral $ length $ chain bc
+newBlock :: Proof -> Hash -> UTCTime -> BlockChain -> BlockChain
+newBlock p h t bc =
+    let b = Block { index        = fromIntegral $ length $ chain bc
                   , timestamp    = t
                   , proof        = p
                   , previousHash = h
                   , transactions = currentTransactions bc
                   }
-    in  pure bc { chain = chain bc ++ [b], currentTransactions = [] }
+    in  bc { chain = chain bc ++ [b], currentTransactions = [] }
+
+blockAt :: Int -> BlockChain -> Maybe Block
+blockAt idx bc =
+    let c = chain bc
+    in if idx >= length c
+          then Nothing
+          else Just $ c !! idx
+
+lastBlock :: BlockChain -> Block
+lastBlock bc =
+    let c = chain bc
+    in  if null c
+            then error "Genesis Block is not created!!"
+            else c !! ((length c) - 1)
+
+blockToHash :: Block -> Hash
+blockToHash = hash . show
+
+hash :: String -> Hash
+hash = B.unpack . B16.encode . S.hash . B.pack
+
+proofOfWork :: Proof -> (Proof, Hash)
+proofOfWork preProof = core preProof
+  where
+    core :: Integer -> (Proof, Hash)
+    core val =
+        let p = preProof * val
+        in  if valid p then (p, hash $ show p) else core (val + 1)
+
+    valid :: Proof -> Bool
+    valid p =
+        let s = hash $ show p
+        in  length s
+                >= 4
+                && s
+                !! 0
+                == '0'
+                && s
+                !! 1
+                == '0'
+                && s
+                !! 2
+                == '0'
+                && s
+                !! 3
+                == '0'
