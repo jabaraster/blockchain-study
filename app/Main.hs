@@ -8,6 +8,7 @@ module Main where
 import           Data.Maybe
 import           Data.Aeson
 import           Network.Wai
+import           Network.Wai.Logger
 import           Network.Wai.Handler.Warp
 import           Servant
 import           Data.Time.Clock
@@ -86,7 +87,8 @@ server db = serveDirectoryFileServer "./static"
                  pure $ GenericResponse "OK"
 
 main :: IO ()
-main = do
+main = withStdoutLogger $ \aplogger -> do
   bc <- BC.def
   db <- atomically $ newTVar bc
-  run 8080 $ serve api $ server db
+  let settings = setPort 8080 $ setLogger aplogger defaultSettings
+  runSettings settings $ serve api $ server db

@@ -33,6 +33,7 @@ executable blockchain-study-exe
                      , aeson
                      , servant-server
                      , wai
+                     , wai-logger
                      , warp
                      , stm
   default-language:    Haskell2010
